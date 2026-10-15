@@ -1,0 +1,63 @@
+# ---------------------------------------------------------------------------
+# NEVER commit game content. This repository holds source code and docs only.
+# ---------------------------------------------------------------------------
+*.iso
+*.ISO
+*.bin
+*.BIN
+*.img
+*.mdf
+*.nrg
+*.cso
+*.chd
+*.dat
+*.DAT
+*.db
+*.DB
+*.elf
+*.ELF
+*.irx
+*.IRX
+*.ssh
+*.SSH
+*.tm2
+*.TM2
+*.ps2
+*.mcd
+*.max
+*.psu
+*.head
+
+# Research output from the Windows inspector (inventory, extracted files, packages)
+Madden06Research/
+research-local/
+inventory/
+extracted/
+samples/
+packages/
+drops/
+*.zip
+
+# Private credentials
+.env
+*.pem
+*.key
+secrets*
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Editors / OS
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
