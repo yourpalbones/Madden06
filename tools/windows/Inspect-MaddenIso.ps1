@@ -385,7 +385,7 @@ namespace Madden06Research.V1
         public List<IsoEntry> Walk()
         {
             List<IsoEntry> result = new List<IsoEntry>();
-            HashSet<long> visited = new HashSet<long>();
+            Dictionary<long, bool> visited = new Dictionary<long, bool>();
             Stack<IsoEntry> stack = new Stack<IsoEntry>();
             IsoEntry root = new IsoEntry();
             root.Path = "/"; root.ParentPath = ""; root.Name = ""; root.RawName = ""; root.IsDirectory = true;
@@ -396,7 +396,8 @@ namespace Madden06Research.V1
             while (stack.Count > 0)
             {
                 IsoEntry dir = stack.Pop();
-                if (!visited.Add(dir.Lba)) { Warnings.Add("Directory visited twice (loop?): " + dir.Path); continue; }
+                if (visited.ContainsKey(dir.Lba)) { Warnings.Add("Directory visited twice (loop?): " + dir.Path); continue; }
+                visited[dir.Lba] = true;
                 if (dir.Size <= 0 || dir.Size > 64L * 1024 * 1024) { Warnings.Add("Implausible directory size for " + dir.Path); continue; }
                 byte[] data = new byte[dir.Size];
                 int got = ReadExtent(dir.Lba, 0, data, 0, data.Length);
@@ -835,7 +836,7 @@ function Format-Size([double] $Bytes) {
 }
 
 function ConvertTo-LocalPath([string] $Root, [string] $IsoFilePath) {
-    $relative = $IsoFilePath.TrimStart('/') -replace '/', '\'
+    $relative = $IsoFilePath.TrimStart('/').Replace('/', [string][System.IO.Path]::DirectorySeparatorChar)
     return [System.IO.Path]::Combine($Root, $relative)
 }
 
@@ -1080,7 +1081,8 @@ try {
     if ($iso.PathTableLLba -gt 0) { $layout.Add([pscustomobject]@{ Kind = 'pathtable'; Path = '(L path table)'; Lba = $iso.PathTableLLba; Sectors = [long][Math]::Ceiling($iso.PathTableSize / 2048.0); Size = $iso.PathTableSize }) }
     if ($iso.PathTableMLba -gt 0) { $layout.Add([pscustomobject]@{ Kind = 'pathtable'; Path = '(M path table)'; Lba = $iso.PathTableMLba; Sectors = [long][Math]::Ceiling($iso.PathTableSize / 2048.0); Size = $iso.PathTableSize }) }
     foreach ($d in $dirs) { $layout.Add([pscustomobject]@{ Kind = 'directory'; Path = $d.Path; Lba = $d.Lba; Sectors = [long][Math]::Ceiling($d.Size / 2048.0); Size = $d.Size }) }
-    foreach ($f in $files) { $layout.Add([pscustomobject]@{ Kind = 'file'; Path = $f.Path; Lba = $f.Lba; Sectors = [long][Math]::Ceiling($f.Size / 2048.0); Size = $f.Size }) }
+    # Zero-length files occupy no sectors (their LBA is often 0), so they are left out of the layout.
+    foreach ($f in $files) { if ($f.Size -gt 0) { $layout.Add([pscustomobject]@{ Kind = 'file'; Path = $f.Path; Lba = $f.Lba; Sectors = [long][Math]::Ceiling($f.Size / 2048.0); Size = $f.Size }) } }
     $layoutSorted = @($layout | Sort-Object Lba, Path)
     $lbaRows = New-Object System.Collections.Generic.List[object]
     for ($k = 0; $k -lt $layoutSorted.Count; $k++) {
@@ -1231,12 +1233,12 @@ try {
         $archSummary = foreach ($key in ($scans.Keys | Sort-Object)) {
             $s = $scans[$key]
             $top = @($s.Entries | Where-Object { $_.Container -eq $key })
-            $algos = ($top | Group-Object Algorithm | Sort-Object Name | ForEach-Object { '{0}x{1}' -f $_.Name, $_.Count }) -join ' '
-            $tags = ($top | Group-Object Tag | Sort-Object Count -Descending | Select-Object -First 6 | ForEach-Object { '{0}x{1}' -f $_.Name, $_.Count }) -join ' '
+            $algos = ($top | Group-Object Algorithm | Sort-Object Name | ForEach-Object { '{0} ({1})' -f $_.Name, $_.Count }) -join ', '
+            $tags = ($top | Group-Object Tag | Sort-Object Count -Descending | Select-Object -First 6 | ForEach-Object { '{0} ({1})' -f $_.Name, $_.Count }) -join ', '
             $chunks = (@($s.Chunks | Where-Object { $_.Container -eq $key }) | ForEach-Object { $_.Type }) -join ','
             [pscustomobject]@{ Archive = $key; Entries = $top.Count; Nested = @($s.Entries | Where-Object { $_.Depth -gt 0 }).Count; Chunks = $chunks; Algorithms = $algos; 'Inner formats' = $tags; Textures = $s.Textures.Count; Problems = $s.Problems.Count }
         }
-        Add-Line 'Algorithms are the TERF `COMP` values (0 = stored). Inner formats are detected from the first bytes of each stored entry.'
+        Add-Line 'Algorithms are the TERF `COMP` values with entry counts in parentheses (0 = stored). Inner formats are detected from the first bytes of each entry.'
         Add-Line
         Add-Table @($archSummary) @('Archive', 'Entries', 'Nested', 'Chunks', 'Algorithms', 'Inner formats', 'Textures', 'Problems')
         $algoTotals = $allArchiveEntries | Group-Object Algorithm | ForEach-Object { [pscustomobject]@{ Algorithm = $_.Name; Entries = $_.Count; 'Stored bytes' = ('{0:N0}' -f ($_.Group | Measure-Object StoredSize -Sum).Sum) } }
@@ -1416,7 +1418,7 @@ if ($UploadWithGh -and $packageFiles.Count -gt 0) {
 $elapsed = (Get-Date) - $started
 Write-Host ''
 Write-Host ('Finished in {0:mm\:ss}.' -f $elapsed) -ForegroundColor Green
-Write-Host ('Report:    {0}' -f [System.IO.Path]::Combine($outFull, 'reports\research_report.md'))
+Write-Host ('Report:    {0}' -f [System.IO.Path]::Combine([System.IO.Path]::Combine($outFull, 'reports'), 'research_report.md'))
 Write-Host ('Inventory: {0}' -f [System.IO.Path]::Combine($outFull, 'inventory'))
 if ($packageFiles.Count -gt 0) {
     Write-Host 'Packages to send to the cloud session:'

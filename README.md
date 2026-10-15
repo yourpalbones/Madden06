@@ -11,7 +11,7 @@ real file formats. Goals in priority order:
 
 | Phase | State |
 |---|---|
-| 0. ISO inspection & transfer utility | **Written, awaiting first test run.** See [docs/WINDOWS-ISO-INSPECTOR.md](docs/WINDOWS-ISO-INSPECTOR.md) |
+| 0. ISO inspection & transfer utility | **Ready to run.** 14 automated tests pass against synthetic PS2-style discs (2048- and 2352-byte sectors) on PowerShell 7.4; embedded C# verified as C# 5 for Windows PowerShell 5.1. Not yet run on the real disc. See [docs/WINDOWS-ISO-INSPECTOR.md](docs/WINDOWS-ISO-INSPECTOR.md) |
 | 1. Reverse-engineering formats | Desk research done ([docs/FINDINGS.md](docs/FINDINGS.md)); waiting for disc inventory |
 | 2. Portrait extraction | Not started (needs the portrait archive sample) |
 | 3. Portrait import / replacement | Not started |
@@ -35,6 +35,14 @@ Nothing is marked working without evidence from the real disc or from PCSX2.
 ```
 tools/windows/      Windows PowerShell utilities (no install needed)
 docs/               Instructions, findings (confirmed vs hypotheses), transfer workflow
+tests/              Automated tests; synthetic.py generates fake PS2-style discs (no game data)
+```
+
+Running the tests (Linux/macOS/Windows with PowerShell 7 or 5.1 installed):
+
+```
+pip install -r requirements-dev.txt
+python -m pytest tests
 ```
 
 Planned: `src/madden06/` (Python core library: ISO9660, TERF archives, decompression, PS2 GS
