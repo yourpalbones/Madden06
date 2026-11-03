@@ -41,6 +41,12 @@ RATING_FIELDS: dict[str, str] = {
     "PTGH": "Toughness",
 }
 TARGET_TAGS: tuple[str, ...] = tuple(RATING_FIELDS)
+
+# Biographical fields used only to *condition* estimates; the converter never outputs
+# or writes them. PWGT is an editor-verified biography field (editing.BIOGRAPHY_LIMITS:
+# 8 bits, 0..221; the editor's UI states weight 160-381 lb).
+AUX_TAGS: tuple[str, ...] = ("PWGT",)
+MODEL_TAGS: tuple[str, ...] = TARGET_TAGS + AUX_TAGS
 RATING_MIN = 0
 RATING_MAX = 99
 RATING_BITS = 7

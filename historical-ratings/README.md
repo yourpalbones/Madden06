@@ -7,9 +7,10 @@ reader. **It never writes a DAT, save or ISO.** Applying results is a later
 milestone that will go through the editor's own `editing.patch_player` on a separate
 working copy.
 
-Status: Milestone 1 (mapping) done, Milestone 2 engine implemented and tested on
-synthetic data. **No real conversion has been run yet**: it needs the Madden '95
-source and a Madden 06 roster export (see `docs/MILESTONE-1-MAPPING.md` §8).
+Status: Milestone 1 (mapping) done. The Madden '95 source format is verified from the
+printed book (Vikings page): `schemas/madden95_book_schema.v1.json`. The engine is
+tested on synthetic data. **No real conversion has been run yet**: it needs all 28
+team pages and a Madden 06 roster export (see `docs/MILESTONE-1-MAPPING.md` §8).
 No in-game validation has occurred.
 
 ## Install
@@ -27,14 +28,15 @@ python tools\export_m06_play_table.py --iso "<your SLUS-21213 ISO>" --out local_
 :: 2. Learn Madden 06 baselines; review the report (position-code checks, team sizes, Overall fit)
 python -m historical_ratings baseline --play-export local_data\m06_play_member1.json --out local_data\baseline.json --report local_data\baseline_report.json
 
-:: 3. Copy schemas\madden95_source_schema.TEMPLATE.json, then profile the source to verify column meanings
-python -m historical_ratings profile-source --source local_data\m95.csv --schema local_data\m95_schema.json
+:: 3. Book pages transcribed as printed (one CSV per team, same columns as the Vikings file) -> one row per player
+python -m historical_ratings prepare-book --printed local_data\madden95_book_*_as_printed.csv --out local_data\m95.csv --review local_data\m95_review.json
+python -m historical_ratings profile-source --source local_data\m95.csv --schema schemas\madden95_book_schema.v1.json
 
 :: 4. Test archetype priors against the real roster
 python -m historical_ratings archetype-check --baseline local_data\baseline.json --archetypes schemas\archetypes.v1.json
 
 :: 5. Convert (percentiles always use the whole league; --only limits the output)
-python -m historical_ratings convert --source local_data\m95.csv --schema local_data\m95_schema.json ^
+python -m historical_ratings convert --source local_data\m95.csv --schema schemas\madden95_book_schema.v1.json ^
     --baseline local_data\baseline.json --archetypes schemas\archetypes.v1.json --assign local_data\assign.json ^
     --only ID1,ID2 --out-dir local_data\test_group
 ```
@@ -58,7 +60,7 @@ Outputs are deterministic (no timestamps, sorted keys): same inputs ⇒ identica
 
 | Method | Meaning |
 |---|---|
-| `source_direct` | Verified Madden '95 field, percentile-mapped onto the Madden 06 distribution for that tag and position |
+| `source_direct` | Verified Madden '95 field, percentile-mapped onto the Madden 06 distribution for that tag and position (confidence 0.8 for an equivalent concept, 0.6 for an approximate one, e.g. Pursuit → Awareness) |
 | `source_partial` | Verified field that only partly describes the tag; blended with the distribution estimate |
 | `source_unverified` | Field meaning not verified; used only with `--allow-unverified-fields`, always low confidence |
 | `historical_evidence` | Cited evidence item (`--evidence`, citation and grade A/B/C required); never overrides source-derived tags |

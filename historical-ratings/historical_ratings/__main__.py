@@ -1,5 +1,6 @@
 """Command line: python -m historical_ratings <command> ...
 
+  prepare-book     Turn as-printed Madden '95 book tables into one row per player.
   baseline         Learn Madden 06 positional baselines from a PLAY export.
   profile-source   Per-position column statistics of a Madden '95 source (field verification aid).
   match            Match source players against a reference roster; writes a review queue.
@@ -82,6 +83,11 @@ def main(argv: list[str] | None = None) -> int:
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
 
+    pb = sub.add_parser("prepare-book")
+    pb.add_argument("--printed", required=True, nargs="+", help="as-printed CSV(s), one or more team pages")
+    pb.add_argument("--out", required=True, help="new prepared source CSV")
+    pb.add_argument("--review", required=True, help="new review JSON (links, return-only players, flags)")
+
     b = sub.add_parser("baseline")
     b.add_argument("--play-export", required=True)
     b.add_argument("--out", required=True)
@@ -120,6 +126,18 @@ def main(argv: list[str] | None = None) -> int:
     c.add_argument("--only", help="comma-separated source ids (test group)")
 
     args = ap.parse_args(argv)
+
+    if args.cmd == "prepare-book":
+        from .book import prepare, read_printed, write_prepared
+        players, review = prepare(read_printed(args.printed))
+        if Path(args.review).exists():
+            raise SystemExit(f"Refusing to overwrite {args.review}")
+        write_prepared(players, args.out)
+        _dump(review, args.review)
+        print(f"prepared {review['players']} players from {review['printed_rows']} printed rows; "
+              f"{len(review['return_links'])} return rows linked, {len(review['return_only'])} return-only, "
+              f"{len(review['flags'])} players flagged for review")
+        return 0
 
     if args.cmd == "baseline":
         base = Baseline.from_play_export(args.play_export, position_codes_verified=args.position_codes_verified,

@@ -21,9 +21,11 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .m06_schema import GROUPS, TARGET_TAGS
+from .m06_schema import AUX_TAGS, GROUPS, TARGET_TAGS
 
-ROLES = ("primary", "supporting")
+ROLES = ("primary", "supporting", "condition")
+MAPPINGS = ("equivalent", "approximate")
+SCOPES = ("position", "returners")
 
 
 class SchemaError(ValueError):
@@ -38,6 +40,12 @@ class Interpretation:
     targets: tuple[tuple[str, str, float], ...]  # (tag, role, weight)
     verified: bool
     evidence: str
+    # equivalent: the Madden 06 tag governs the same on-field outcome as the source label.
+    # approximate: closest Madden 06 counterpart to a concept Madden 06 does not rate.
+    mapping: str = "equivalent"
+    # position: percentiles among same-group peers; returners: among all league returners.
+    scope: str = "position"
+    rationale: str = ""
 
     def applies_to(self, position: str) -> bool:
         return "*" in self.positions or position in self.positions
@@ -81,10 +89,13 @@ def load_schema(path: str | Path) -> SourceSchema:
         targets = []
         for t in i.get("targets", []):
             tag, role = t["tag"], t.get("role", "primary")
-            if tag not in TARGET_TAGS:
-                raise SchemaError(f"Unknown Madden 06 tag {tag}; only the 21 verified tags are allowed")
             if role not in ROLES:
                 raise SchemaError(f"Unknown target role {role}")
+            if role == "condition":
+                if tag not in AUX_TAGS:
+                    raise SchemaError(f"Role 'condition' is only for auxiliary fields {AUX_TAGS}, not {tag}")
+            elif tag not in TARGET_TAGS:
+                raise SchemaError(f"Unknown Madden 06 tag {tag}; only the 21 verified tags are allowed")
             weight = float(t.get("weight", 1.0 if role == "primary" else 0.5))
             if not 0 < weight <= 1:
                 raise SchemaError("Target weight must be in (0, 1]")
@@ -93,10 +104,18 @@ def load_schema(path: str | Path) -> SourceSchema:
         evidence = str(i.get("evidence", "")).strip()
         if verified and not evidence:
             raise SchemaError(f"Verified interpretation of {i['column']} needs evidence")
+        mapping, scope = i.get("mapping", "equivalent"), i.get("scope", "position")
+        if mapping not in MAPPINGS:
+            raise SchemaError(f"mapping must be one of {MAPPINGS}")
+        if scope not in SCOPES:
+            raise SchemaError(f"scope must be one of {SCOPES}")
+        if scope == "returners" and any(r != "primary" for _, r, _ in targets):
+            raise SchemaError("returner-scope interpretations take primary targets only")
         interps.append(Interpretation(
             column=i["column"], positions=tuple(i.get("positions", ["*"])),
             meaning=str(i["meaning"]), targets=tuple(targets),
-            verified=verified, evidence=evidence,
+            verified=verified, evidence=evidence, mapping=mapping, scope=scope,
+            rationale=str(i.get("rationale", "")),
         ))
     # Two interpretations may not claim the same column for the same position.
     seen: dict[tuple[str, str], str] = {}

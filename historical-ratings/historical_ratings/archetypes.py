@@ -9,6 +9,12 @@ source-derived ratings are never changed by an archetype.
 The shipped definitions are priors (status ``prior``). ``archetype_support``
 tests each prior against residual correlations in the actual Madden 06 roster
 so a prior that contradicts the game's own data is flagged during calibration.
+
+Caveat for reading that report: residuals are taken *after* removing the trend on
+Overall (POVR). Ratings that feed the Overall formula at a position therefore
+co-vary negatively by construction (at a fixed Overall, more of one means less of
+another). A "conflict" between two high-weight Overall ingredients is weak
+evidence against a prior; a conflict between low-weight tags is stronger.
 """
 
 from __future__ import annotations

@@ -81,7 +81,7 @@ RATING_TAGS = ("PSPD", "PACC", "PSTR", "PAGI", "PAWR", "PTHP", "PTHA", "PCTH", "
 
 def template_dat(players: list[dict], teams: list[dict]) -> bytes:
     play_fields = [("PFNA", 0, 96), ("PLNA", 0, 128), ("PGID", 3, 13), ("TGID", 3, 10), ("PPOS", 3, 5),
-                   ("POVR", 3, 7), ("PJEN", 3, 7)] + [(t, 3, 7) for t in RATING_TAGS]
+                   ("POVR", 3, 7), ("PJEN", 3, 7), ("PWGT", 3, 8)] + [(t, 3, 7) for t in RATING_TAGS]
     team_fields = [("TGID", 3, 10), ("TLNA", 0, 96), ("TDNA", 0, 96)]
     member1 = database({"PLAY": _table(play_fields, players), "TEAM": _table(team_fields, teams)})
     member0 = database({"MISC": _table([("XXXX", 3, 8)], [{"XXXX": 1}])})

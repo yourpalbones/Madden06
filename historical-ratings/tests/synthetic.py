@@ -57,6 +57,9 @@ OVR = {
     "K": (-15.0, {"PKPR": 0.55, "PKAC": 0.6}),
     "P": (-15.0, {"PKPR": 0.6, "PKAC": 0.55}),
 }
+# Fake body-weight codes (PWGT = lb - 160) per group; tied to strength so conditioning can be tested.
+PWGT_MEAN = {"QB": 60, "HB": 52, "FB": 85, "WR": 35, "TE": 95, "T": 150, "G": 150, "C": 140, "DE": 110,
+             "DT": 145, "OLB": 80, "MLB": 85, "CB": 30, "FS": 40, "SS": 48, "K": 35, "P": 45}
 # A style axis creates archetype-like residual structure (e.g. elusive vs power HB).
 STYLE = {"HB": {"PAGI": 4, "PACC": 3, "PSTR": -4, "PBTK": -3}, "QB": {"PSPD": 5, "PAGI": 4, "PACC": 4}}
 
@@ -77,12 +80,20 @@ def make_m06_play(seed: int = 6) -> list[dict]:
                     load = 6 if t in GROUP_MEANS[g] else 2
                     v = mean + load * q + STYLE.get(g, {}).get(t, 0) * style + rng.gauss(0, 3)
                     rec[t] = max(0, min(99, int(round(v))))
+                pstr_mean = GROUP_MEANS[g].get("PSTR", BASE["PSTR"])
+                rec["PKRT"] = max(0, min(40, rec["PKRT"] - 15))  # most players are not returners
+                rec["PWGT"] = max(0, min(221, int(round(PWGT_MEAN[g] + 1.5 * (rec["PSTR"] - pstr_mean)
+                                                        + rng.gauss(0, 5)))))
                 b0, w = OVR[g]
                 ovr = b0 + sum(wt * rec[t] for t, wt in w.items())
                 rec.update({"PGID": pgid, "TGID": tgid, "PPOS": code[pos], "POVR": max(0, min(99, int(round(ovr)))),
                             "PFNA": "Synth", "PLNA": f"Player{pgid}", "_member": 1, "_row": pgid, "_team": f"Team {tgid:02d}"})
                 rows.append(rec)
                 pgid += 1
+        # Two returners per team from WR/HB/CB backups get high kick-return ratings.
+        team_rows = [r for r in rows if r["TGID"] == tgid and r["PPOS"] in (code["WR"], code["HB"], code["CB"])]
+        for r in rng.sample(team_rows, 2):
+            r["PKRT"] = rng.randint(72, 95)
     # A few free agents without a team record must be excluded.
     for i in range(5):
         rows.append({**rows[i], "PGID": 9000 + i, "TGID": 1009, "_team": ""})
@@ -110,17 +121,27 @@ def make_source_rows(seed: int = 95) -> list[dict]:
             starter = not slot.endswith("2") and not slot.endswith("3")
             q = rng.gauss(0.6 if starter else -0.5, 0.9)
             vals = [max(0, min(15, int(round(8 + 2.5 * q + rng.gauss(0, 1.5))))) for _ in range(4)]
-            rows.append({"id": f"T{t:02d}-{slot}", "team": f"Old{t:02d}", "slot": slot_position(slot),
-                         "name": f"Fake {slot}T{t:02d}", "num": str(10 + len(rows) % 80),
-                         "r1": str(vals[0]), "r2": str(vals[1]), "r3": str(vals[2]), "r4": str(vals[3])})
+            row = {"id": f"T{t:02d}-{slot}", "team": f"Old{t:02d}", "slot": slot_position(slot),
+                   "name": f"Fake {slot}T{t:02d}", "num": str(10 + len(rows) % 80),
+                   "r1": str(vals[0]), "r2": str(vals[1]), "r3": str(vals[2]), "r4": str(vals[3]),
+                   "weight": "", "kr_speed": "", "kr_agility": ""}
+            if slot_position(slot) in ("LT", "LG", "C", "RG", "RT"):
+                row["weight"] = str(int(round(290 + 15 * rng.gauss(0, 1))))
+            if slot in ("WR3", "LCB2"):  # listed returners
+                row["kr_speed"] = str(rng.randint(9, 15))
+                row["kr_agility"] = str(rng.randint(8, 15))
+            rows.append(row)
+        if t == 0:  # a return-only player with no position row
+            rows.append({"id": "T00-KR", "team": "Old00", "slot": "KR", "name": "Fake Returner", "num": "22",
+                         "r1": "", "r2": "", "r3": "", "r4": "", "weight": "", "kr_speed": "13", "kr_agility": "12"})
     return rows
 
 
 def make_schema(verified: bool = True) -> dict:
     ev = "TEST FIXTURE ONLY" if verified else ""
-    def interp(col, positions, meaning, targets):
+    def interp(col, positions, meaning, targets, **extra):
         return {"column": col, "positions": positions, "meaning": meaning, "targets": targets,
-                "verified": verified, "evidence": ev}
+                "verified": verified, "evidence": ev, **extra}
     P = lambda tag: {"tag": tag, "role": "primary"}
     S = lambda tag, w=0.5: {"tag": tag, "role": "supporting", "weight": w}
     return {
@@ -128,7 +149,8 @@ def make_schema(verified: bool = True) -> dict:
         "game": "SYNTHETIC TEST SOURCE (not Madden '95)",
         "platform": "synthetic", "roster_basis": "synthetic",
         "identity_columns": {"source_id": "id", "team": "team", "position": "slot", "name": "name", "jersey": "num"},
-        "columns": [{"name": c, "min": 0, "max": 15} for c in ("r1", "r2", "r3", "r4")],
+        "columns": [{"name": c, "min": 0, "max": 15} for c in ("r1", "r2", "r3", "r4", "kr_speed", "kr_agility")]
+                   + [{"name": "weight", "min": 150, "max": 400}],
         "interpretations": [
             interp("r1", ["*"], "fake speed", [P("PSPD")]),
             interp("r2", ["QB", "HB", "WR", "CB"], "fake agility", [P("PAGI")]),
@@ -143,8 +165,11 @@ def make_schema(verified: bool = True) -> dict:
             interp("r3", ["LCB", "RCB"], "fake hands", [P("PCTH")]),
             interp("r3", ["K", "P"], "fake kick power", [P("PKPR")]),
             interp("r4", ["K", "P"], "fake kick accuracy", [P("PKAC")]),
+            interp("weight", ["LT", "LG", "C", "RG", "RT"], "body weight (lb)", [{"tag": "PWGT", "role": "condition"}]),
+            interp("kr_speed", ["*"], "fake return speed", [P("PKRT")], scope="returners", mapping="approximate"),
+            interp("kr_agility", ["*"], "fake return agility", [P("PKRT")], scope="returners", mapping="approximate"),
         ],
-        "position_map": {k: v for k, v in SOURCE_GROUP.items()},
+        "position_map": {**SOURCE_GROUP, "KR": None},
     }
 
 

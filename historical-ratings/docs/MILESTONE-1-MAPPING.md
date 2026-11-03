@@ -1,6 +1,6 @@
 # Milestone 1 — research and mapping
 
-Status as of 2026-11-03. "Verified" means checked against a primary artifact
+Status as of 2026-11-03 (updated after the Vikings book page was supplied). "Verified" means checked against a primary artifact
 named here. Anything else is labelled as a convention, hypothesis or unknown.
 
 ## 1. What was inspected
@@ -58,19 +58,52 @@ Other facts read from the editor:
   `tools/export_m06_play_table.py` was added (read-only, calls `load_players`).
 * Any other PLAY fields are outside the verified set; the converter never writes them.
 
-## 3. Madden '95 source — what is known
+## 3. Madden '95 source — verified from the printed book
 
-**We do not yet have the source data.** Nothing in the repositories contains it.
-Until it is supplied, no Madden '95 field meaning is treated as verified.
+Source: Madden NFL '95 printed team ratings, "NFC Central Player Ratings",
+**Minnesota Vikings** page (image supplied by the project owner, 758×507 px). The
+table headers below were read directly from it. The transcription is kept in the
+git-ignored `local_data/` folder because it is game content.
 
-| Question | Finding | Status |
-|---|---|---|
-| Platform | Genesis Madden '95 carried the NFLPA licence (real player names); SNES had team licensing only, so players are identified by number/position. A source with "Warren Moon" by name is therefore Genesis, or a third-party transcription. | Documented (Wikipedia, retail/review sources); **your file must confirm** |
-| Rating storage | Adjacent Genesis/SNES titles (Madden '93/'94) store ratings as 0–15 values; an editor for them converts 0–99 ↔ 0–15 and uses depth-chart slots (QB1, LILB, LCB2, KR, PR…). | Documented for '93/'94 only (Goldglv editor). **Not verified for '95** |
-| Rating scale | Third-party archive says Madden 92–95 printed ratings on a 1–15 scale. | Unverified claim |
-| Attribute list | Not established by any accessible primary source. Classic Madden reused rating slots per position, so a column may mean different things for a QB and a guard. | **Unknown** |
-| Warren Moon 7 / 4 / 13 / 12 | Four values, field names not visible. | **Not interpreted.** We need the screen labels or a second screen |
-| Roster basis | Madden '95 shipped in 1994 for the 1994 season. Whether a given file is the shipped preseason roster or an updated one must be tested with the markers below. | To verify against your file |
+### Ratings printed per position table
+
+| Table (slots on the Vikings page) | Ratings printed |
+|---|---|
+| Quarterbacks (QB1–QB3) | Speed, Scrambling, Pass Accuracy, Pass Range |
+| Running backs (HB1–HB3, FB, FB2) | Speed, Agility, Hands, Break Tackles |
+| Receivers (WR1–WR6, TE1–TE3) | Speed, Agility, Hands, Break Tackles |
+| Offensive line (LT, LG, C, RG, RT, T2, G2, C2) | Weight (lb), Pass Blocking, Run Blocking |
+| Defensive line (LE, DLT, DRT(NT), RE, DE2, DT2) | Speed, Agility, Pursuit, Tackling |
+| Linebackers (LOLB, ILB, ROLB, ILB2, ILB3, OLB2, OLB3) | Speed, Agility, Awareness, Tackling |
+| Defensive backs (LCB1, LCB2, RCB1, RCB2, FS, SS, FS2, SS2) | Speed, Pass Coverage, Interceptions, Tackling |
+| Special teams: K, P | Distance, Accuracy |
+| Special teams: KR, KR2, PR | Speed, Agility, Break Tackles (return-specific) |
+
+* **Warren Moon (QB1, #1): Speed 7, Scrambling 4, Pass Accuracy 13, Pass Range 12.**
+  This resolves the earlier unlabelled example.
+* **Scale:** every printed rating on the page is 1–15; weight is in pounds.
+* **Not consistent across positions:** each table prints 3–4 ratings, and some
+  Madden 06 essentials have no printed counterpart at some positions: no strength
+  for any lineman, no awareness for quarterbacks, no agility for defensive backs.
+* The same concept can carry different values in different tables: Q. Ismail is
+  WR5 with agility 8 and KR with agility 14. Return ratings are kept separate.
+
+### Identity patterns on the page
+
+* Names are initial + surname or surname only; two different Vikings are printed
+  just as "McDaniel" (LG #64 and ROLB #58).
+* One row (#36, LCB2) has a blank name cell.
+* D. Palmer (#22) appears only as KR2 and PR, with no position row.
+* Depth-chart slots are printed (QB3, WR6, ILB3…); one slot is "DRT(NT)".
+
+### Roster basis and platform
+
+* Vikings page: Moon is on Minnesota (April 1994 trade), and 1994 draft picks
+  DeWayne Washington (RCB1), Todd Steussie (G2) and David Palmer (KR2/PR) are
+  listed. That is a **post-April-1994-draft roster**, i.e. the shipped 1994 roster.
+  Confirm on each team page with the markers below.
+* The book names players, which is consistent with the Genesis release (NFLPA
+  licence). Which box/manual it came from is still to be confirmed.
 
 ### Roster-season markers (check these players' teams in the source)
 
@@ -97,24 +130,48 @@ Until it is supplied, no Madden '95 field meaning is treated as verified.
   its 0–99 numbers or OVR* as Madden 06 ratings. To use it, save the relevant pages
   (Madden '95 team pages / position lists) from a browser and add them to `local_data/`.
 
-## 4. Source → target mapping (per Madden 06 tag)
+## 4. Source → target mapping (implemented)
 
-No Madden '95 column is mapped yet. The schema file declares mappings **per source
-position**, each with `verified` + `evidence`; unverified mappings are ignored unless
-`--allow-unverified-fields` is passed, and then are labelled `source_unverified`.
+`schemas/madden95_book_schema.v1.json`. Labels are verified; each mapping is marked
+**equivalent** (the Madden 06 rating governs the same on-field outcome; confidence
+0.8, high) or **approximate** (closest Madden 06 counterpart to a concept Madden 06
+does not rate; confidence 0.6, medium).
 
-| Madden 06 tag | Expected method | Direct only if the verified '95 schema has… |
+| Book rating | Positions | Madden 06 | Mapping | Note |
+|---|---|---|---|---|
+| Speed | all except OL, K, P | PSPD | equivalent | |
+| Scrambling | QB | PAGI | approximate | no Madden 06 scrambling rating |
+| Pass Accuracy | QB | PTHA | equivalent | |
+| Pass Range | QB | PTHP | equivalent | throw power governs distance |
+| Agility | RB, WR, TE, DL, LB | PAGI | equivalent | |
+| Hands | RB, WR, TE | PCTH | equivalent | |
+| Break Tackles | RB, WR, TE | PBTK | equivalent | |
+| Weight | OL | PWGT (conditioning only) | — | not a rating; informs the strength estimate; never written |
+| Pass / Run Blocking | OL | PPBK / PRBK | equivalent | |
+| Pursuit | DL | PAWR | approximate | no Madden 06 pursuit rating; acceleration is the alternative; revisit in calibration |
+| Tackling | DL, LB, DB | PTAK | equivalent | |
+| Awareness | LB | PAWR | equivalent | |
+| Pass Coverage | DB | PAWR | approximate | no Madden 06 coverage rating |
+| Interceptions | DB | PCTH | approximate | Madden 06 resolves defensive interceptions mainly through catching |
+| Distance / Accuracy | K, P | PKPR / PKAC | equivalent | |
+| KR/PR Speed, Agility, Break Tackles | listed returners | PKRT | approximate | ranked among league returners and mapped onto each Madden 06 team's top returners; does not affect the player's tier |
+
+### What each position gets from the book and what must be estimated
+
+| Group | From the book | Estimated (Madden 06 correlations, then archetype / evidence / review) |
 |---|---|---|
-| PSPD, PAGI, PSTR | source_direct *if present*, else position_distribution | a speed / agility / strength rating for that position |
-| PTHP, PTHA | source_direct *if present* (QB) | arm-strength / accuracy ratings |
-| PCTH, PCAR, PBTK | source_direct *if present* | hands / ball-security / power-running ratings |
-| PPBK, PRBK | source_direct *if present* (OL/TE/FB) | blocking rating(s); a single "blocking" field → primary on one, supporting on the other |
-| PTAK | source_direct *if present* (defense) | tackling rating |
-| PKPR, PKAC | source_direct *if present* (K/P) | kick power / accuracy |
-| PAWR | likely estimated | an intelligence/awareness-type rating |
-| PACC, PJMP | likely estimated (correlated with speed/agility in the Madden 06 data) | explicit acceleration/jumping fields |
-| PKRT | estimated; returner slot + cited evidence can raise it | a KR/PR rating |
-| PIMP, PSTA, PINJ, PTGH | **always estimated** from Madden 06 distributions | (no '95 counterpart expected) |
+| QB | PSPD, PAGI, PTHA, PTHP | PAWR, PACC, PSTR and the rest |
+| HB, FB, WR, TE | PSPD, PAGI, PCTH, PBTK | PACC, PSTR, PCAR, PAWR, PJMP; blocking for TE/FB |
+| OL | PPBK, PRBK (+ weight) | **PSTR** (conditioned on weight), PAWR, PAGI, PSPD, PACC |
+| DL | PSPD, PAGI, PAWR (pursuit), PTAK | **PSTR**, PACC |
+| LB | PSPD, PAGI, PAWR, PTAK | PSTR, PACC, PCTH, PJMP |
+| DB | PSPD, PAWR (coverage), PCTH (interceptions), PTAK | PAGI, PACC, PJMP, PSTR |
+| K, P | PKPR, PKAC | the rest (low impact) |
+| Listed returners | PKRT | — |
+| Everyone | — | PIMP, PSTA, PINJ, PTGH (no '95 counterpart) |
+
+Non-returners get PKRT from Madden 06 players at their position who are *not*
+among their team's top returners, so starters do not inherit returner values.
 
 ## 5. Conversion method (implemented)
 
@@ -153,8 +210,10 @@ Run order once inputs exist:
 
 1. `export_m06_play_table.py` → `baseline` (check position-code checks, team-size
    warnings, overall-model status per group).
-2. `profile-source` on the full '95 roster → verify each column's meaning per
-   position (with the screen labels / manual / archive pages); fill the schema.
+2. Transcribe each team page as printed (same columns as the Vikings file), then
+   `prepare-book` → one row per player plus a review file (return links,
+   return-only players, missing names, surnames initials cannot separate).
+   `profile-source` gives per-position column statistics as a transcription check.
 3. `match` the test group against the source (name, team, position, jersey);
    resolve any `ambiguous`/`weak` result by hand.
 4. `archetype-check` → revise priors that contradict the Madden 06 data.
@@ -163,12 +222,13 @@ Run order once inputs exist:
 
 ## 8. Inputs needed from you
 
-1. **Madden '95 source data**: the actual file(s) — ROM extract, save/roster dump,
-   spreadsheet, or screenshots — and how they were produced.
-2. **Platform and version** (Genesis or SNES; cartridge revision if known).
-3. **Field labels**: the Warren Moon screen with its column headers visible, or the
-   game manual page / roster screen that names the ratings for each position.
-4. **Madden 06 roster export**: run on your PC (read-only):
+1. **The other 27 team pages** of the book, scanned or photographed at higher
+   resolution (300 dpi or ≥ 2000 px wide). The Vikings image was readable, but a few
+   initials are uncertain at 758×507 (flagged in the transcription). Percentiles need
+   the whole league: one team cannot say whether Moon's 13 accuracy is elite in 1994.
+2. **Madden 06 roster export** (read-only, on your PC; keep it local):
    `python tools\export_m06_play_table.py --editor-src "D:\Madden 06" --iso "<your SLUS-21213 ISO>" --out local_data\m06_play_member1.json`
-   Keep this file local; it contains EA data.
-5. Optional: saved nfldraftbuzz Madden '95 pages for cross-checking.
+3. Which box/manual the book came from (Genesis or SNES).
+4. Review decisions the book cannot make: a Madden 06 position for return-only
+   players such as D. Palmer, and the identity of the unnamed #36 LCB2.
+5. Optional: saved nfldraftbuzz Madden '95 pages to cross-check the transcription.

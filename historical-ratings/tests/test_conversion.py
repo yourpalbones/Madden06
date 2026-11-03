@@ -71,7 +71,9 @@ class BaselineTests(Fixture):
 
 class ConversionTests(Fixture):
     def test_every_player_gets_all_21_bounded_ratings_with_provenance(self):
-        self.assertEqual(len(self.result.players), len(self.roster.players))
+        self.assertEqual(len(self.result.players) + len(self.result.skipped), len(self.roster.players))
+        self.assertEqual([s["source_id"] for s in self.result.skipped], ["T00-KR"])
+        self.assertIn("return-only", self.result.skipped[0]["reason"])
         for p in self.result.players:
             self.assertEqual(tuple(p.attributes), TARGET_TAGS)
             rows = self.baseline.groups[p.group]
@@ -248,12 +250,75 @@ class AdjustmentTests(Fixture):
         arch = load_archetypes(REPO / "schemas" / "archetypes.v1.json")
         rep = archetype_support(self.baseline, arch)
         hb_elusive = next(r for r in rep if r["group"] == "HB" and r["archetype"] == "elusive")
-        # Synthetic HB data has an elusive-vs-power style axis, so the prior should agree.
-        self.assertGreaterEqual(hb_elusive["agreement"], 0.75)
+        self.assertIsNotNone(hb_elusive["agreement"])
+        # The synthetic HB style axis (agility up, strength/break-tackle down) is visible in residuals.
+        self.assertLess(self.baseline.residual_corr("HB", "PAGI", "PSTR"), -0.2)
+        self.assertLess(self.baseline.residual_corr("HB", "PAGI", "PBTK"), -0.1)
+        conflict_pairs = {tuple(c["tags"]) for c in hb_elusive["conflicts"]}
+        self.assertNotIn(("PAGI", "PSTR"), conflict_pairs)
 
     def test_unknown_ids_in_adjustments_rejected(self):
         with self.assertRaises(ValueError):
             convert(self.schema, self.roster, self.baseline, overrides=[Override("nope", "PAWR", 50, "r", "t")])
+
+
+class SourceFeatureTests(Fixture):
+    def test_listed_returners_get_returner_level_kick_return(self):
+        wr = [p for p in self.result.players if p.group == "WR"]
+        ret = [p for p in wr if p.source_id.endswith("-WR3")]
+        non = [p for p in wr if not p.source_id.endswith("-WR3")]
+        for p in ret:
+            a = p.attributes["PKRT"]
+            self.assertEqual((a.method, a.basis["population"]), ("source_direct", "returners"))
+            self.assertEqual(a.confidence_label, "medium")  # approximate mapping
+        for p in non:
+            self.assertEqual(p.attributes["PKRT"].basis["population"], "non-returners")
+        mean = lambda ps: sum(p.attributes["PKRT"].value for p in ps) / len(ps)
+        self.assertGreater(mean(ret), mean(non) + 25)
+        self.assertEqual(self.result.population["returners"]["per_team"], 2)
+
+    def test_return_ability_does_not_change_tier(self):
+        p = self.player("T05-WR3")
+        self.assertNotIn("PKRT", [u["column"] for u in p.used_source_fields if u["population"] == "position"])
+        # Tier composite uses only position-scope fields (r1..r3 for WR).
+        self.assertEqual({u["column"] for u in p.used_source_fields if u["population"] == "position"},
+                         {"r1", "r2", "r3"})
+
+    def _with_weight(self, sid, weight):
+        with self.files["source"].open(newline="", encoding="utf-8") as fh:
+            rows = list(csv.DictReader(fh))
+        for r in rows:
+            if r["id"] == sid:
+                r["weight"] = str(weight)
+        path = self.tmp / f"w_{weight}.csv"
+        with path.open("w", newline="", encoding="utf-8") as fh:
+            w = csv.DictWriter(fh, list(rows[0]), lineterminator="\n")
+            w.writeheader()
+            w.writerows(rows)
+        res = convert(self.schema, load_roster(path, self.schema), self.baseline)
+        return self.player(sid, res)
+
+    def test_lineman_weight_conditions_strength_but_not_tier_or_blocking(self):
+        light, heavy = self._with_weight("T04-LG", 255), self._with_weight("T04-LG", 345)
+        self.assertGreater(heavy.attributes["PSTR"].value, light.attributes["PSTR"].value)
+        self.assertIn("PWGT", heavy.attributes["PSTR"].basis["conditioned_on"])
+        self.assertEqual(heavy.tier, {**light.tier, "conditioning": heavy.tier["conditioning"]})
+        for tag in ("PPBK", "PRBK"):
+            self.assertEqual(heavy.attributes[tag].value, light.attributes[tag].value)
+        self.assertNotIn("PWGT", heavy.attributes)  # never an output
+
+    def test_condition_role_restricted_to_auxiliary_fields(self):
+        data = make_schema()
+        data["interpretations"][0]["targets"] = [{"tag": "PSTR", "role": "condition"}]
+        path = self.tmp / "badcond.json"
+        path.write_text(json.dumps(data))
+        with self.assertRaises(SchemaError):
+            load_schema(path)
+        data = make_schema()
+        data["interpretations"][0]["targets"] = [{"tag": "PWGT", "role": "primary"}]
+        path.write_text(json.dumps(data))
+        with self.assertRaises(SchemaError):
+            load_schema(path)
 
 
 if __name__ == "__main__":

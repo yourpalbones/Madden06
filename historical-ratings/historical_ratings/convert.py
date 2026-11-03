@@ -33,7 +33,7 @@ from pathlib import Path
 from .archetypes import Archetype
 from .baseline import Baseline, quantile
 from .linalg import conditional_gaussian
-from .m06_schema import RATING_MAX, RATING_MIN, TARGET_TAGS, clamp_rating
+from .m06_schema import AUX_TAGS, MODEL_TAGS, RATING_MAX, RATING_MIN, TARGET_TAGS, clamp_rating
 from .source import Interpretation, SourcePlayer, SourceRoster, SourceSchema
 
 METHODS = {
@@ -159,6 +159,20 @@ def _usable(interp: Interpretation, allow_unverified: bool) -> bool:
     return interp.verified or allow_unverified
 
 
+MAPPING_CONFIDENCE = {"equivalent": 0.8, "approximate": 0.6}
+
+
+@dataclass
+class _Context:
+    """League-level facts shared by every player in a group."""
+    baseline: Baseline
+    group: str
+    depth_limit: int
+    model: object
+    returner_tags: frozenset[str]
+    returners_per_team: int
+
+
 def convert(
     schema: SourceSchema,
     roster: SourceRoster,
@@ -180,22 +194,40 @@ def convert(
     for sid in assignments:
         if sid not in known_ids:
             raise ValueError(f"Archetype assignment refers to unknown source id {sid}")
+    source_teams = max(1, len({p.team for p in roster.players}))
+
+    # League-wide returner populations (all positions, including return-only players).
+    ret_interps = [i for i in schema.interpretations if i.scope == "returners" and _usable(i, allow_unverified)]
+    ret_values: dict[int, list[float]] = {}
+    returners = set()
+    for p in roster.players:
+        for interp in ret_interps:
+            if interp.applies_to(p.position) and interp.column in p.ratings:
+                ret_values.setdefault(id(interp), []).append(p.ratings[interp.column])
+                returners.add(p.source_id)
+    returner_tags = frozenset(t for i in ret_interps for t, _, _ in i.targets)
+    returners_per_team = max(1, round(len(returners) / source_teams)) if returners else 0
 
     # 1. group players
     by_group: dict[str, list[SourcePlayer]] = {}
     for p in roster.players:
         g = schema.position_map.get(p.position)
         if g is None:
-            skipped.append({"source_id": p.source_id, "reason": f"source position {p.position!r} has no Madden 06 group"})
+            why = f"source position {p.position!r} has no Madden 06 group"
+            if p.source_id in returners:
+                why += " (return-only player: assign a Madden 06 position before conversion)"
+            skipped.append({"source_id": p.source_id, "reason": why})
             continue
         if g not in baseline.groups or len(baseline.groups[g]) < 10:
             skipped.append({"source_id": p.source_id, "reason": f"baseline has too few {g} players"})
             continue
         by_group.setdefault(g, []).append(p)
-    source_teams = max(1, len({p.team for p in roster.players}))
 
     results: list[PlayerResult] = []
     population: dict[str, dict] = {}
+    if returners:
+        population["returners"] = {"source_players": len(returners), "per_team": returners_per_team,
+                                   "tags": sorted(returner_tags)}
     for g in sorted(by_group):
         players = sorted(by_group[g], key=lambda p: p.source_id)
         depth_limit = max(1, round(len(players) / source_teams))
@@ -204,12 +236,13 @@ def convert(
         model = baseline.overall_models.get(g)
         sds = {t: baseline.trend(g, t).marginal_sd for t in TARGET_TAGS}
         importance = model.importance(sds) if model and model.status != "unreliable" else {}
+        ctx = _Context(baseline, g, depth_limit, model, returner_tags, returners_per_team)
 
-        # 2. percentiles per interpretation (same column + same meaning)
+        # 2. percentiles per interpretation (same column + same meaning) among group peers
         interp_values: dict[int, list[float]] = {}
         for p in players:
             for interp in schema.interpretations_for(p.position):
-                if interp.column in p.ratings and _usable(interp, allow_unverified):
+                if interp.scope == "position" and interp.column in p.ratings and _usable(interp, allow_unverified):
                     interp_values.setdefault(id(interp), []).append(p.ratings[interp.column])
 
         composites: dict[str, float] = {}
@@ -223,14 +256,17 @@ def convert(
                 if not _usable(interp, allow_unverified):
                     ignored.append({"column": interp.column, "meaning": interp.meaning, "reason": "meaning not verified"})
                     continue
-                pct = _midrank(interp_values[id(interp)], p.ratings[interp.column])
+                pool = ret_values[id(interp)] if interp.scope == "returners" else interp_values[id(interp)]
+                pct = _midrank(pool, p.ratings[interp.column])
                 used.append({"column": interp.column, "meaning": interp.meaning, "value": p.ratings[interp.column],
-                             "percentile": round(pct, 4), "verified": interp.verified, "evidence": interp.evidence})
-                w_int = 0.0
+                             "percentile": round(pct, 4), "population": interp.scope, "mapping": interp.mapping,
+                             "verified": interp.verified, "evidence": interp.evidence})
                 for tag, role, weight in interp.targets:
                     tag_inputs.setdefault(tag, []).append((pct, weight, role, interp))
-                    if role == "primary":
-                        w_int += importance.get(tag, 1.0) * weight
+                # Tier: position-scope fields only; return ability and body weight do not make a player better.
+                if interp.scope != "position" or all(r == "condition" for _, r, _ in interp.targets):
+                    continue
+                w_int = sum(importance.get(t, 1.0) * w for t, r, w in interp.targets if r == "primary")
                 w_int = w_int or 0.25  # fields with no primary target still inform tier, lightly
                 num += w_int * pct
                 den += w_int
@@ -252,12 +288,11 @@ def convert(
             tier_p = _midrank(comp_values, composites[p.source_id])
             tier_povr = quantile(povr_sorted, tier_p)
             results.append(_convert_player(
-                p, g, baseline, depth_limit, tier_p, tier_povr, composites[p.source_id], info,
+                p, ctx, tier_p, tier_povr, composites[p.source_id], info,
                 archetypes.get((g, assignments[p.source_id])) if p.source_id in assignments else None,
                 assignments.get(p.source_id),
                 [e for e in evidence if e.source_id == p.source_id],
                 [o for o in overrides if o.source_id == p.source_id],
-                model,
             ))
     inputs = {
         "source_sha256": roster.sha256, "schema_sha256": schema.sha256,
@@ -271,52 +306,95 @@ def convert(
     return ConversionResult(results, skipped, inputs, population)
 
 
-def _convert_player(p, g, baseline, depth_limit, tier_p, tier_povr, composite, info,
-                    archetype, archetype_name, evidence, overrides, model) -> PlayerResult:
+def _source_confidence(chosen: list, distinct: int) -> float:
+    if not all(x[3].verified for x in chosen):
+        return 0.3
+    conf = min(MAPPING_CONFIDENCE[x[3].mapping] for x in chosen)
+    return min(conf, 0.65) if distinct < 4 else conf
+
+
+def _convert_player(p, ctx: _Context, tier_p, tier_povr, composite, info,
+                    archetype, archetype_name, evidence, overrides) -> PlayerResult:
+    baseline, g, depth_limit, model = ctx.baseline, ctx.group, ctx.depth_limit, ctx.model
     flags: list[str] = []
     attrs: dict[str, AttributeResult] = {}
     raw_est: dict[str, float] = {}
+    conditioning: dict[str, float] = {}   # auxiliary fields (e.g. PWGT) mapped onto Madden 06
+    returner_direct: set[str] = set()
 
-    # direct + partial source tags
-    partial: dict[str, tuple[float, float, list]] = {}
+    def fields(chosen):
+        return [{"column": x[3].column, "meaning": x[3].meaning, "percentile": round(x[0], 4),
+                 "mapping": x[3].mapping, "rationale": x[3].rationale} for x in chosen]
+
+    # direct, returner, conditioning and partial source tags
+    partial: dict[str, tuple] = {}
     for tag, inputs in info["tag_inputs"].items():
-        primaries = [x for x in inputs if x[2] == "primary"]
-        chosen = primaries or inputs
-        w = sum(x[1] for x in chosen)
-        pct = sum(x[0] * x[1] for x in chosen) / w
+        ret = [x for x in inputs if x[3].scope == "returners"]
+        cond = [x for x in inputs if x[2] == "condition"]
+        pos = [x for x in inputs if x[3].scope == "position" and x[2] != "condition"]
+        if cond:
+            pct = sum(x[0] * x[1] for x in cond) / sum(x[1] for x in cond)
+            conditioning[tag] = baseline.tag_quantile(g, tag, pct, depth_limit)
+        if ret:
+            pct = sum(x[0] * x[1] for x in ret) / sum(x[1] for x in ret)
+            pool = baseline.returner_values(tag, ctx.returners_per_team)
+            q = quantile(pool, pct)
+            conf = _source_confidence(ret, len(set(pool)))
+            method = "source_direct" if all(x[3].verified for x in ret) else "source_unverified"
+            raw_est[tag] = q
+            returner_direct.add(tag)
+            attrs[tag] = AttributeResult(0, method, conf, confidence_label(conf), {
+                "percentile": round(pct, 4), "m06_quantile": round(q, 2), "population": "returners",
+                "returners_per_team": ctx.returners_per_team, "source_fields": fields(ret)})
+            continue
+        if not pos:
+            continue
+        primaries = [x for x in pos if x[2] == "primary"]
+        chosen = primaries or pos
+        pct = sum(x[0] * x[1] for x in chosen) / sum(x[1] for x in chosen)
         q = baseline.tag_quantile(g, tag, pct, depth_limit)
         verified = all(x[3].verified for x in chosen)
-        fields_used = [{"column": x[3].column, "meaning": x[3].meaning, "percentile": round(x[0], 4)} for x in chosen]
         if primaries:
-            distinct = len({r[tag] for r in baseline.reference(g, depth_limit)})
-            conf = 0.8 if verified else 0.3
-            if verified and distinct < 4:
-                conf = 0.65
-            method = "source_direct" if verified else "source_unverified"
+            conf = _source_confidence(chosen, len({r[tag] for r in baseline.reference(g, depth_limit)}))
             raw_est[tag] = q
-            attrs[tag] = AttributeResult(0, method, conf, confidence_label(conf),
-                                         {"percentile": round(pct, 4), "m06_quantile": round(q, 2), "source_fields": fields_used})
+            attrs[tag] = AttributeResult(0, "source_direct" if verified else "source_unverified", conf,
+                                         confidence_label(conf), {"percentile": round(pct, 4),
+                                                                  "m06_quantile": round(q, 2),
+                                                                  "source_fields": fields(chosen)})
         else:
-            partial[tag] = (q, min(0.6, max(x[1] for x in chosen)), fields_used, verified)
+            partial[tag] = (q, min(0.6, max(x[1] for x in chosen)), fields(chosen), verified)
 
-    direct = [t for t in TARGET_TAGS if t in attrs]
+    direct = [t for t in TARGET_TAGS if t in attrs and t not in returner_direct]
+    known = direct + [t for t in AUX_TAGS if t in conditioning]
     missing = [t for t in TARGET_TAGS if t not in attrs]
-    trends = {t: baseline.trend(g, t) for t in TARGET_TAGS}
+    trends = {t: baseline.trend(g, t) for t in MODEL_TAGS}
     cov = baseline.residual_cov(g)
-    idx = {t: i for i, t in enumerate(TARGET_TAGS)}
-    known_dev = [raw_est[t] - trends[t].at(tier_povr) for t in direct]
-    shifts, variances = conditional_gaussian(cov, [idx[t] for t in direct], [idx[t] for t in missing], known_dev)
+    idx = {t: i for i, t in enumerate(MODEL_TAGS)}
+    values_known = {**raw_est, **conditioning}
+    known_dev = [values_known[t] - trends[t].at(tier_povr) for t in known]
+    shifts, variances = conditional_gaussian(cov, [idx[t] for t in known], [idx[t] for t in missing], known_dev)
     for tag, shift, var in zip(missing, shifts, variances):
+        msd = trends[tag].marginal_sd
+        if tag in ctx.returner_tags:
+            # Not a listed returner: use Madden 06 non-returners at this position and tier.
+            pool = baseline.non_returner_values(g, tag, ctx.returners_per_team, depth_limit)
+            est = quantile(pool, tier_p)
+            conf = 0.45
+            basis = {"population": "non-returners", "tier_percentile": round(tier_p, 4),
+                     "returners_per_team": ctx.returners_per_team}
+            raw_est[tag] = est
+            attrs[tag] = AttributeResult(0, "position_distribution", conf, confidence_label(conf), basis)
+            continue
         mu = trends[tag].at(tier_povr)
         est = mu + shift
         cond_sd = math.sqrt(var)
-        msd = trends[tag].marginal_sd
         conf = 0.6 if msd < 0.5 else 0.15 + 0.45 * max(0.0, 1 - cond_sd / msd)
         basis = {"tier_povr": round(tier_povr, 2), "trend_expectation": round(mu, 2),
                  "conditional_shift": round(shift, 2), "conditional_sd": round(cond_sd, 2),
-                 "positional_sd": round(msd, 2), "conditioned_on": direct}
+                 "positional_sd": round(msd, 2), "conditioned_on": known}
+        if conditioning:
+            basis["conditioning_values"] = {t: round(v, 2) for t, v in conditioning.items()}
         method = "position_distribution"
-        notes = []
         if tag in partial:
             q, w, fields_used, verified = partial[tag]
             est = w * q + (1 - w) * est
@@ -326,9 +404,9 @@ def _convert_player(p, g, baseline, depth_limit, tier_p, tier_povr, composite, i
                 method, conf = "source_unverified", min(conf, 0.3)
             basis.update({"source_quantile": round(q, 2), "source_weight": w, "source_fields": fields_used})
         raw_est[tag] = est
-        attrs[tag] = AttributeResult(0, method, conf, confidence_label(conf), basis, notes)
+        attrs[tag] = AttributeResult(0, method, conf, confidence_label(conf), basis)
 
-    source_derived = set(direct) | set(partial)
+    source_derived = set(direct) | set(partial) | returner_direct
 
     # archetype priors (purely estimated tags only)
     if archetype:
@@ -398,6 +476,6 @@ def _convert_player(p, g, baseline, depth_limit, tier_p, tier_povr, composite, i
         used_source_fields=info["used"], ignored_source_fields=info["ignored"],
         archetype=archetype.name if archetype else None,
         tier={"composite": round(composite, 4), "percentile": round(tier_p, 4), "povr": round(tier_povr, 2),
-              "depth_limit": depth_limit},
+              "depth_limit": depth_limit, "conditioning": {t: round(v, 2) for t, v in conditioning.items()}},
         attributes={t: attrs[t] for t in TARGET_TAGS}, estimated_overall=est_ovr, flags=flags,
     )

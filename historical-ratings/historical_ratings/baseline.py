@@ -18,11 +18,12 @@ from pathlib import Path
 
 from .linalg import lstsq
 from .m06_schema import (
-    GROUPS, PPOS_CONVENTION, STARTERS_PER_TEAM, TARGET_TAGS,
+    GROUPS, MODEL_TAGS, PPOS_CONVENTION, STARTERS_PER_TEAM, TARGET_TAGS,
     check_position_codes, group_for_code,
 )
 
-ROW_COLUMNS = ("depth", "TGID", "PGID", "PPOS", "POVR") + TARGET_TAGS
+ROW_COLUMNS = ("depth", "TGID", "PGID", "PPOS", "POVR") + MODEL_TAGS
+FORMAT = "historical_ratings.baseline/2"
 
 
 class BaselineError(ValueError):
@@ -128,7 +129,7 @@ class Baseline:
         team_names: dict[int, str] = {}
         for r in raw:
             try:
-                rec = {k: int(r[k]) for k in ("TGID", "PGID", "PPOS", "POVR") + TARGET_TAGS}
+                rec = {k: int(r[k]) for k in ("TGID", "PGID", "PPOS", "POVR") + MODEL_TAGS}
             except (KeyError, TypeError, ValueError) as exc:
                 raise BaselineError(f"Export row lacks integer field: {exc}") from exc
             team_val = r.get("_team", "")
@@ -187,7 +188,7 @@ class Baseline:
     # ------------------------------------------------------------------ persistence
     def save(self, path: str | Path) -> None:
         payload = {
-            "format": "historical_ratings.baseline/1",
+            "format": FORMAT,
             "meta": self.meta,
             "columns": list(ROW_COLUMNS),
             "groups": {g: [[r[c] for c in ROW_COLUMNS] for r in rows] for g, rows in self.groups.items()},
@@ -197,8 +198,8 @@ class Baseline:
     @classmethod
     def load(cls, path: str | Path) -> "Baseline":
         payload = json.loads(Path(path).read_text(encoding="utf-8"))
-        if payload.get("format") != "historical_ratings.baseline/1":
-            raise BaselineError("Not a baseline file")
+        if payload.get("format") != FORMAT:
+            raise BaselineError(f"Not a {FORMAT} file; rebuild it with the 'baseline' command")
         cols = payload["columns"]
         groups = {g: [dict(zip(cols, row)) for row in rows] for g, rows in payload["groups"].items()}
         b = cls(groups, payload["meta"])
@@ -245,7 +246,7 @@ class Baseline:
             if len(rows) < 3:
                 continue
             ov = [r["POVR"] for r in rows]
-            for t in TARGET_TAGS:
+            for t in MODEL_TAGS:
                 ys = [r[t] for r in rows]
                 _, msd = _mean_sd(ys)
                 a, b = lstsq([[1.0, o] for o in ov], ys)
@@ -264,8 +265,8 @@ class Baseline:
             if len(rows) < 3:
                 continue
             tr = self._trends[g]
-            res = [[r[t] - tr[t].at(r["POVR"]) for t in TARGET_TAGS] for r in rows]
-            n, k = len(res), len(TARGET_TAGS)
+            res = [[r[t] - tr[t].at(r["POVR"]) for t in MODEL_TAGS] for r in rows]
+            n, k = len(res), len(MODEL_TAGS)
             cov = [[0.0] * k for _ in range(k)]
             for row in res:
                 for i in range(k):
@@ -283,9 +284,35 @@ class Baseline:
 
     def residual_corr(self, group: str, a: str, b: str) -> float:
         cov = self.residual_cov(group)
-        i, j = TARGET_TAGS.index(a), TARGET_TAGS.index(b)
+        i, j = MODEL_TAGS.index(a), MODEL_TAGS.index(b)
         denom = math.sqrt(cov[i][i] * cov[j][j])
         return cov[i][j] / denom if denom > 1e-9 else 0.0
+
+    # ------------------------------------------------------------------ returners
+    def returner_ids(self, tag: str, per_team: int) -> frozenset[int]:
+        """PGIDs of each team's top ``per_team`` players by ``tag`` across all groups."""
+        key = (tag, per_team)
+        cache = self.__dict__.setdefault("_returner_cache", {})
+        if key not in cache:
+            by_team: dict[int, list[dict]] = {}
+            for rows in self.groups.values():
+                for r in rows:
+                    by_team.setdefault(r["TGID"], []).append(r)
+            ids = set()
+            for rows in by_team.values():
+                rows = sorted(rows, key=lambda r: (-r[tag], r["PGID"]))
+                ids.update(r["PGID"] for r in rows[:per_team])
+            cache[key] = frozenset(ids)
+        return cache[key]
+
+    def returner_values(self, tag: str, per_team: int) -> list[float]:
+        ids = self.returner_ids(tag, per_team)
+        return sorted(r[tag] for rows in self.groups.values() for r in rows if r["PGID"] in ids)
+
+    def non_returner_values(self, group: str, tag: str, per_team: int, depth_limit: int | None = None) -> list[float]:
+        ids = self.returner_ids(tag, per_team)
+        vals = sorted(r[tag] for r in self.reference(group, depth_limit) if r["PGID"] not in ids)
+        return vals or self.sorted_values(group, tag, depth_limit)
 
     @cached_property
     def overall_models(self) -> dict[str, OverallModel]:
@@ -327,6 +354,6 @@ class Baseline:
                     "weights": {t: round(c, 4) for t, c in zip(m.tags, m.coefficients[1:]) if abs(c) >= 0.005},
                     "intercept": round(m.coefficients[0], 3),
                 },
-                "ratings": {t: self.summary(g, t) for t in TARGET_TAGS},
+                "ratings": {t: self.summary(g, t) for t in MODEL_TAGS},
             }
         return out

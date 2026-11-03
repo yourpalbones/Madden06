@@ -1,0 +1,713 @@
+{
+ "schema_version": 1,
+ "game": "Madden NFL '95",
+ "platform": "UNVERIFIED - printed book names players (NFLPA licence), consistent with the Genesis release; confirm which box/manual it came from",
+ "roster_basis": "1994 season roster after the April 1994 draft (Vikings page: Moon on MIN; 1994 rookies DeWayne Washington, Todd Steussie, David Palmer present). Confirm on every team page.",
+ "notes": [
+  "Column labels are verified from the Vikings page; other team pages are assumed to use the same tables. prepare_book_source.py rejects any column it does not know, so a different layout cannot pass silently.",
+  "Printed scale observed on the Vikings page: 1..15 (weight in lb). A 0 or 16 is treated as a transcription error.",
+  "mapping 'equivalent' = the Madden 06 rating governs the same on-field outcome; 'approximate' = closest Madden 06 counterpart to a concept Madden 06 does not rate (lower confidence).",
+  "Not supplied by the book for some positions, therefore always estimated: QB awareness/strength; OL strength and agility; DL strength; DB agility/jumping; all hidden ratings (importance, stamina, injury, toughness)."
+ ],
+ "identity_columns": {
+  "source_id": "id",
+  "team": "team",
+  "position": "position",
+  "name": "name",
+  "jersey": "jersey"
+ },
+ "columns": [
+  {
+   "name": "speed",
+   "min": 1,
+   "max": 15
+  },
+  {
+   "name": "scrambling",
+   "min": 1,
+   "max": 15
+  },
+  {
+   "name": "pass_accuracy",
+   "min": 1,
+   "max": 15
+  },
+  {
+   "name": "pass_range",
+   "min": 1,
+   "max": 15
+  },
+  {
+   "name": "agility",
+   "min": 1,
+   "max": 15
+  },
+  {
+   "name": "hands",
+   "min": 1,
+   "max": 15
+  },
+  {
+   "name": "break_tackles",
+   "min": 1,
+   "max": 15
+  },
+  {
+   "name": "pass_blocking",
+   "min": 1,
+   "max": 15
+  },
+  {
+   "name": "run_blocking",
+   "min": 1,
+   "max": 15
+  },
+  {
+   "name": "pursuit",
+   "min": 1,
+   "max": 15
+  },
+  {
+   "name": "tackling",
+   "min": 1,
+   "max": 15
+  },
+  {
+   "name": "awareness",
+   "min": 1,
+   "max": 15
+  },
+  {
+   "name": "pass_coverage",
+   "min": 1,
+   "max": 15
+  },
+  {
+   "name": "interceptions",
+   "min": 1,
+   "max": 15
+  },
+  {
+   "name": "distance",
+   "min": 1,
+   "max": 15
+  },
+  {
+   "name": "accuracy",
+   "min": 1,
+   "max": 15
+  },
+  {
+   "name": "kr_speed",
+   "min": 1,
+   "max": 15
+  },
+  {
+   "name": "kr_agility",
+   "min": 1,
+   "max": 15
+  },
+  {
+   "name": "kr_break_tackles",
+   "min": 1,
+   "max": 15
+  },
+  {
+   "name": "pr_speed",
+   "min": 1,
+   "max": 15
+  },
+  {
+   "name": "pr_agility",
+   "min": 1,
+   "max": 15
+  },
+  {
+   "name": "pr_break_tackles",
+   "min": 1,
+   "max": 15
+  },
+  {
+   "name": "weight",
+   "min": 150,
+   "max": 400
+  }
+ ],
+ "interpretations": [
+  {
+   "column": "speed",
+   "positions": [
+    "QB",
+    "HB",
+    "FB",
+    "WR",
+    "TE",
+    "LE",
+    "RE",
+    "DE",
+    "LDE",
+    "RDE",
+    "DLT",
+    "DRT",
+    "DT",
+    "LDT",
+    "RDT",
+    "NT",
+    "LOLB",
+    "ROLB",
+    "OLB",
+    "ILB",
+    "LILB",
+    "RILB",
+    "MLB",
+    "LCB",
+    "RCB",
+    "CB",
+    "FS",
+    "SS"
+   ],
+   "meaning": "Speed",
+   "targets": [
+    {
+     "tag": "PSPD",
+     "role": "primary"
+    }
+   ],
+   "verified": true,
+   "evidence": "Madden NFL '95 printed team ratings ('NFC Central Player Ratings', Minnesota Vikings page; image supplied by the project owner 2026-11-03). Column headers per position table read directly.",
+   "mapping": "equivalent",
+   "scope": "position",
+   "rationale": ""
+  },
+  {
+   "column": "scrambling",
+   "positions": [
+    "QB"
+   ],
+   "meaning": "Scrambling",
+   "targets": [
+    {
+     "tag": "PAGI",
+     "role": "primary"
+    }
+   ],
+   "verified": true,
+   "evidence": "Madden NFL '95 printed team ratings ('NFC Central Player Ratings', Minnesota Vikings page; image supplied by the project owner 2026-11-03). Column headers per position table read directly.",
+   "mapping": "approximate",
+   "scope": "position",
+   "rationale": "Madden 06 has no scrambling rating; QB elusiveness in the pocket is governed mainly by agility. Acceleration is then estimated from Madden 06 correlations."
+  },
+  {
+   "column": "pass_accuracy",
+   "positions": [
+    "QB"
+   ],
+   "meaning": "Pass Accuracy",
+   "targets": [
+    {
+     "tag": "PTHA",
+     "role": "primary"
+    }
+   ],
+   "verified": true,
+   "evidence": "Madden NFL '95 printed team ratings ('NFC Central Player Ratings', Minnesota Vikings page; image supplied by the project owner 2026-11-03). Column headers per position table read directly.",
+   "mapping": "equivalent",
+   "scope": "position",
+   "rationale": ""
+  },
+  {
+   "column": "pass_range",
+   "positions": [
+    "QB"
+   ],
+   "meaning": "Pass Range",
+   "targets": [
+    {
+     "tag": "PTHP",
+     "role": "primary"
+    }
+   ],
+   "verified": true,
+   "evidence": "Madden NFL '95 printed team ratings ('NFC Central Player Ratings', Minnesota Vikings page; image supplied by the project owner 2026-11-03). Column headers per position table read directly.",
+   "mapping": "equivalent",
+   "scope": "position",
+   "rationale": "Throw power governs how far a Madden 06 QB can throw."
+  },
+  {
+   "column": "agility",
+   "positions": [
+    "HB",
+    "FB",
+    "WR",
+    "TE",
+    "LE",
+    "RE",
+    "DE",
+    "LDE",
+    "RDE",
+    "DLT",
+    "DRT",
+    "DT",
+    "LDT",
+    "RDT",
+    "NT",
+    "LOLB",
+    "ROLB",
+    "OLB",
+    "ILB",
+    "LILB",
+    "RILB",
+    "MLB"
+   ],
+   "meaning": "Agility",
+   "targets": [
+    {
+     "tag": "PAGI",
+     "role": "primary"
+    }
+   ],
+   "verified": true,
+   "evidence": "Madden NFL '95 printed team ratings ('NFC Central Player Ratings', Minnesota Vikings page; image supplied by the project owner 2026-11-03). Column headers per position table read directly.",
+   "mapping": "equivalent",
+   "scope": "position",
+   "rationale": ""
+  },
+  {
+   "column": "hands",
+   "positions": [
+    "HB",
+    "FB",
+    "WR",
+    "TE"
+   ],
+   "meaning": "Hands",
+   "targets": [
+    {
+     "tag": "PCTH",
+     "role": "primary"
+    }
+   ],
+   "verified": true,
+   "evidence": "Madden NFL '95 printed team ratings ('NFC Central Player Ratings', Minnesota Vikings page; image supplied by the project owner 2026-11-03). Column headers per position table read directly.",
+   "mapping": "equivalent",
+   "scope": "position",
+   "rationale": "Hands = catching."
+  },
+  {
+   "column": "break_tackles",
+   "positions": [
+    "HB",
+    "FB",
+    "WR",
+    "TE"
+   ],
+   "meaning": "Break Tackles",
+   "targets": [
+    {
+     "tag": "PBTK",
+     "role": "primary"
+    }
+   ],
+   "verified": true,
+   "evidence": "Madden NFL '95 printed team ratings ('NFC Central Player Ratings', Minnesota Vikings page; image supplied by the project owner 2026-11-03). Column headers per position table read directly.",
+   "mapping": "equivalent",
+   "scope": "position",
+   "rationale": ""
+  },
+  {
+   "column": "weight",
+   "positions": [
+    "LT",
+    "LG",
+    "C",
+    "RG",
+    "RT",
+    "T",
+    "G"
+   ],
+   "meaning": "Weight (lb)",
+   "targets": [
+    {
+     "tag": "PWGT",
+     "role": "condition"
+    }
+   ],
+   "verified": true,
+   "evidence": "Madden NFL '95 printed team ratings ('NFC Central Player Ratings', Minnesota Vikings page; image supplied by the project owner 2026-11-03). Column headers per position table read directly.",
+   "mapping": "equivalent",
+   "scope": "position",
+   "rationale": "Not a rating. Conditions the strength estimate through the Madden 06 weight-strength relationship among linemen; percentile-mapped so 1994 vs 2005 lineman size does not bias it."
+  },
+  {
+   "column": "pass_blocking",
+   "positions": [
+    "LT",
+    "LG",
+    "C",
+    "RG",
+    "RT",
+    "T",
+    "G"
+   ],
+   "meaning": "Pass Blocking",
+   "targets": [
+    {
+     "tag": "PPBK",
+     "role": "primary"
+    }
+   ],
+   "verified": true,
+   "evidence": "Madden NFL '95 printed team ratings ('NFC Central Player Ratings', Minnesota Vikings page; image supplied by the project owner 2026-11-03). Column headers per position table read directly.",
+   "mapping": "equivalent",
+   "scope": "position",
+   "rationale": ""
+  },
+  {
+   "column": "run_blocking",
+   "positions": [
+    "LT",
+    "LG",
+    "C",
+    "RG",
+    "RT",
+    "T",
+    "G"
+   ],
+   "meaning": "Run Blocking",
+   "targets": [
+    {
+     "tag": "PRBK",
+     "role": "primary"
+    }
+   ],
+   "verified": true,
+   "evidence": "Madden NFL '95 printed team ratings ('NFC Central Player Ratings', Minnesota Vikings page; image supplied by the project owner 2026-11-03). Column headers per position table read directly.",
+   "mapping": "equivalent",
+   "scope": "position",
+   "rationale": ""
+  },
+  {
+   "column": "pursuit",
+   "positions": [
+    "LE",
+    "RE",
+    "DE",
+    "LDE",
+    "RDE",
+    "DLT",
+    "DRT",
+    "DT",
+    "LDT",
+    "RDT",
+    "NT"
+   ],
+   "meaning": "Pursuit",
+   "targets": [
+    {
+     "tag": "PAWR",
+     "role": "primary"
+    }
+   ],
+   "verified": true,
+   "evidence": "Madden NFL '95 printed team ratings ('NFC Central Player Ratings', Minnesota Vikings page; image supplied by the project owner 2026-11-03). Column headers per position table read directly.",
+   "mapping": "approximate",
+   "scope": "position",
+   "rationale": "Madden 06 has no pursuit rating; reading and reacting to the ball carrier is governed by awareness. Revisit in calibration (acceleration is the other candidate)."
+  },
+  {
+   "column": "tackling",
+   "positions": [
+    "LE",
+    "RE",
+    "DE",
+    "LDE",
+    "RDE",
+    "DLT",
+    "DRT",
+    "DT",
+    "LDT",
+    "RDT",
+    "NT",
+    "LOLB",
+    "ROLB",
+    "OLB",
+    "ILB",
+    "LILB",
+    "RILB",
+    "MLB",
+    "LCB",
+    "RCB",
+    "CB",
+    "FS",
+    "SS"
+   ],
+   "meaning": "Tackling",
+   "targets": [
+    {
+     "tag": "PTAK",
+     "role": "primary"
+    }
+   ],
+   "verified": true,
+   "evidence": "Madden NFL '95 printed team ratings ('NFC Central Player Ratings', Minnesota Vikings page; image supplied by the project owner 2026-11-03). Column headers per position table read directly.",
+   "mapping": "equivalent",
+   "scope": "position",
+   "rationale": ""
+  },
+  {
+   "column": "awareness",
+   "positions": [
+    "LOLB",
+    "ROLB",
+    "OLB",
+    "ILB",
+    "LILB",
+    "RILB",
+    "MLB"
+   ],
+   "meaning": "Awareness",
+   "targets": [
+    {
+     "tag": "PAWR",
+     "role": "primary"
+    }
+   ],
+   "verified": true,
+   "evidence": "Madden NFL '95 printed team ratings ('NFC Central Player Ratings', Minnesota Vikings page; image supplied by the project owner 2026-11-03). Column headers per position table read directly.",
+   "mapping": "equivalent",
+   "scope": "position",
+   "rationale": ""
+  },
+  {
+   "column": "pass_coverage",
+   "positions": [
+    "LCB",
+    "RCB",
+    "CB",
+    "FS",
+    "SS"
+   ],
+   "meaning": "Pass Coverage",
+   "targets": [
+    {
+     "tag": "PAWR",
+     "role": "primary"
+    }
+   ],
+   "verified": true,
+   "evidence": "Madden NFL '95 printed team ratings ('NFC Central Player Ratings', Minnesota Vikings page; image supplied by the project owner 2026-11-03). Column headers per position table read directly.",
+   "mapping": "approximate",
+   "scope": "position",
+   "rationale": "Madden 06 has no coverage rating; DB coverage reactions are governed by awareness (agility, speed and jumping also matter and come from speed + Madden 06 correlations)."
+  },
+  {
+   "column": "interceptions",
+   "positions": [
+    "LCB",
+    "RCB",
+    "CB",
+    "FS",
+    "SS"
+   ],
+   "meaning": "Interceptions",
+   "targets": [
+    {
+     "tag": "PCTH",
+     "role": "primary"
+    }
+   ],
+   "verified": true,
+   "evidence": "Madden NFL '95 printed team ratings ('NFC Central Player Ratings', Minnesota Vikings page; image supplied by the project owner 2026-11-03). Column headers per position table read directly.",
+   "mapping": "approximate",
+   "scope": "position",
+   "rationale": "Madden 06 resolves defensive interceptions mainly through catching."
+  },
+  {
+   "column": "distance",
+   "positions": [
+    "K",
+    "P"
+   ],
+   "meaning": "Distance",
+   "targets": [
+    {
+     "tag": "PKPR",
+     "role": "primary"
+    }
+   ],
+   "verified": true,
+   "evidence": "Madden NFL '95 printed team ratings ('NFC Central Player Ratings', Minnesota Vikings page; image supplied by the project owner 2026-11-03). Column headers per position table read directly.",
+   "mapping": "equivalent",
+   "scope": "position",
+   "rationale": "Kick power governs kicking/punting distance."
+  },
+  {
+   "column": "accuracy",
+   "positions": [
+    "K",
+    "P"
+   ],
+   "meaning": "Accuracy",
+   "targets": [
+    {
+     "tag": "PKAC",
+     "role": "primary"
+    }
+   ],
+   "verified": true,
+   "evidence": "Madden NFL '95 printed team ratings ('NFC Central Player Ratings', Minnesota Vikings page; image supplied by the project owner 2026-11-03). Column headers per position table read directly.",
+   "mapping": "equivalent",
+   "scope": "position",
+   "rationale": ""
+  },
+  {
+   "column": "kr_speed",
+   "positions": [
+    "*"
+   ],
+   "meaning": "KR Speed (special-teams table)",
+   "targets": [
+    {
+     "tag": "PKRT",
+     "role": "primary"
+    }
+   ],
+   "verified": true,
+   "evidence": "Madden NFL '95 printed team ratings ('NFC Central Player Ratings', Minnesota Vikings page; image supplied by the project owner 2026-11-03). Column headers per position table read directly.",
+   "mapping": "approximate",
+   "scope": "returners",
+   "rationale": "Return-table ratings describe return ability; mapped onto Madden 06 kick return among each team's top returners. They do not affect the player's position tier."
+  },
+  {
+   "column": "kr_agility",
+   "positions": [
+    "*"
+   ],
+   "meaning": "KR Agility (special-teams table)",
+   "targets": [
+    {
+     "tag": "PKRT",
+     "role": "primary"
+    }
+   ],
+   "verified": true,
+   "evidence": "Madden NFL '95 printed team ratings ('NFC Central Player Ratings', Minnesota Vikings page; image supplied by the project owner 2026-11-03). Column headers per position table read directly.",
+   "mapping": "approximate",
+   "scope": "returners",
+   "rationale": "Return-table ratings describe return ability; mapped onto Madden 06 kick return among each team's top returners. They do not affect the player's position tier."
+  },
+  {
+   "column": "kr_break_tackles",
+   "positions": [
+    "*"
+   ],
+   "meaning": "KR Break Tackles (special-teams table)",
+   "targets": [
+    {
+     "tag": "PKRT",
+     "role": "primary"
+    }
+   ],
+   "verified": true,
+   "evidence": "Madden NFL '95 printed team ratings ('NFC Central Player Ratings', Minnesota Vikings page; image supplied by the project owner 2026-11-03). Column headers per position table read directly.",
+   "mapping": "approximate",
+   "scope": "returners",
+   "rationale": "Return-table ratings describe return ability; mapped onto Madden 06 kick return among each team's top returners. They do not affect the player's position tier."
+  },
+  {
+   "column": "pr_speed",
+   "positions": [
+    "*"
+   ],
+   "meaning": "PR Speed (special-teams table)",
+   "targets": [
+    {
+     "tag": "PKRT",
+     "role": "primary"
+    }
+   ],
+   "verified": true,
+   "evidence": "Madden NFL '95 printed team ratings ('NFC Central Player Ratings', Minnesota Vikings page; image supplied by the project owner 2026-11-03). Column headers per position table read directly.",
+   "mapping": "approximate",
+   "scope": "returners",
+   "rationale": "Return-table ratings describe return ability; mapped onto Madden 06 kick return among each team's top returners. They do not affect the player's position tier."
+  },
+  {
+   "column": "pr_agility",
+   "positions": [
+    "*"
+   ],
+   "meaning": "PR Agility (special-teams table)",
+   "targets": [
+    {
+     "tag": "PKRT",
+     "role": "primary"
+    }
+   ],
+   "verified": true,
+   "evidence": "Madden NFL '95 printed team ratings ('NFC Central Player Ratings', Minnesota Vikings page; image supplied by the project owner 2026-11-03). Column headers per position table read directly.",
+   "mapping": "approximate",
+   "scope": "returners",
+   "rationale": "Return-table ratings describe return ability; mapped onto Madden 06 kick return among each team's top returners. They do not affect the player's position tier."
+  },
+  {
+   "column": "pr_break_tackles",
+   "positions": [
+    "*"
+   ],
+   "meaning": "PR Break Tackles (special-teams table)",
+   "targets": [
+    {
+     "tag": "PKRT",
+     "role": "primary"
+    }
+   ],
+   "verified": true,
+   "evidence": "Madden NFL '95 printed team ratings ('NFC Central Player Ratings', Minnesota Vikings page; image supplied by the project owner 2026-11-03). Column headers per position table read directly.",
+   "mapping": "approximate",
+   "scope": "returners",
+   "rationale": "Return-table ratings describe return ability; mapped onto Madden 06 kick return among each team's top returners. They do not affect the player's position tier."
+  }
+ ],
+ "position_map": {
+  "QB": "QB",
+  "HB": "HB",
+  "FB": "FB",
+  "WR": "WR",
+  "TE": "TE",
+  "LT": "T",
+  "RT": "T",
+  "T": "T",
+  "LG": "G",
+  "RG": "G",
+  "G": "G",
+  "C": "C",
+  "LE": "DE",
+  "RE": "DE",
+  "DE": "DE",
+  "LDE": "DE",
+  "RDE": "DE",
+  "DLT": "DT",
+  "DRT": "DT",
+  "DT": "DT",
+  "LDT": "DT",
+  "RDT": "DT",
+  "NT": "DT",
+  "LOLB": "OLB",
+  "ROLB": "OLB",
+  "OLB": "OLB",
+  "ILB": "MLB",
+  "LILB": "MLB",
+  "RILB": "MLB",
+  "MLB": "MLB",
+  "LCB": "CB",
+  "RCB": "CB",
+  "CB": "CB",
+  "FS": "FS",
+  "SS": "SS",
+  "K": "K",
+  "P": "P",
+  "KR": null,
+  "PR": null
+ }
+}
