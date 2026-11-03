@@ -1,0 +1,64 @@
+{
+ "format": "historical_ratings.archetypes/1",
+ "note": "PRIORS, not measurements. Offsets are in Madden 06 residual-SD units for the position group and apply only to ratings the Madden '95 source cannot supply. Run 'archetype-check' against the real baseline and revise any archetype whose sign pattern contradicts the game's own data before marking it calibrated.",
+ "archetypes": [
+  {"group": "QB", "name": "pocket", "status": "prior", "description": "Pocket passer: accuracy and awareness over mobility",
+   "offsets": {"PSPD": -0.6, "PACC": -0.5, "PAGI": -0.5, "PTHA": 0.3, "PAWR": 0.3}},
+  {"group": "QB", "name": "mobile", "status": "prior", "description": "Mobile/scrambling quarterback",
+   "offsets": {"PSPD": 1.0, "PACC": 0.8, "PAGI": 0.8, "PBTK": 0.4, "PCAR": 0.4}},
+
+  {"group": "HB", "name": "power", "status": "prior", "description": "Power runner: strength and break-tackle over elusiveness",
+   "offsets": {"PSTR": 0.8, "PBTK": 0.8, "PCAR": 0.3, "PAGI": -0.5, "PACC": -0.3, "PSPD": -0.2}},
+  {"group": "HB", "name": "elusive", "status": "prior", "description": "Elusive runner: agility and acceleration over power",
+   "offsets": {"PAGI": 1.0, "PACC": 0.6, "PSPD": 0.3, "PSTR": -0.6, "PBTK": -0.4}},
+  {"group": "HB", "name": "receiving", "status": "prior", "description": "Third-down/receiving back",
+   "offsets": {"PCTH": 1.0, "PAGI": 0.3, "PSTR": -0.3, "PBTK": -0.3}},
+
+  {"group": "FB", "name": "blocking", "status": "prior", "description": "Lead blocker",
+   "offsets": {"PRBK": 0.8, "PPBK": 0.6, "PSTR": 0.5, "PCAR": -0.3, "PCTH": -0.3}},
+  {"group": "FB", "name": "rushing", "status": "prior", "description": "Ball-carrying fullback",
+   "offsets": {"PCAR": 0.6, "PBTK": 0.6, "PRBK": -0.4}},
+
+  {"group": "WR", "name": "possession", "status": "prior", "description": "Possession receiver: hands and strength over pure speed",
+   "offsets": {"PCTH": 0.8, "PSTR": 0.4, "PAWR": 0.3, "PSPD": -0.5, "PACC": -0.3}},
+  {"group": "WR", "name": "deep_threat", "status": "prior", "description": "Vertical threat: speed and acceleration",
+   "offsets": {"PSPD": 1.0, "PACC": 0.6, "PJMP": 0.3, "PSTR": -0.3, "PCTH": -0.2}},
+
+  {"group": "TE", "name": "blocking", "status": "prior", "description": "In-line blocking tight end",
+   "offsets": {"PRBK": 1.0, "PPBK": 0.8, "PSTR": 0.5, "PCTH": -0.5, "PSPD": -0.4}},
+  {"group": "TE", "name": "receiving", "status": "prior", "description": "Receiving tight end",
+   "offsets": {"PCTH": 0.8, "PSPD": 0.5, "PAGI": 0.3, "PRBK": -0.6, "PPBK": -0.4}},
+
+  {"groups": ["T", "G", "C"], "name": "pass_protector", "status": "prior", "description": "Pass-blocking lineman",
+   "offsets": {"PPBK": 0.8, "PAGI": 0.3, "PAWR": 0.3, "PRBK": -0.3}},
+  {"groups": ["T", "G", "C"], "name": "run_blocker", "status": "prior", "description": "Road-grading run blocker",
+   "offsets": {"PRBK": 0.8, "PSTR": 0.5, "PPBK": -0.3}},
+
+  {"groups": ["DE", "DT"], "name": "pass_rusher", "status": "prior", "description": "Pass-rushing lineman",
+   "offsets": {"PSPD": 0.8, "PACC": 0.7, "PAGI": 0.4, "PSTR": -0.3}},
+  {"groups": ["DE", "DT"], "name": "run_stopper", "status": "prior", "description": "Run-stopping lineman",
+   "offsets": {"PSTR": 0.8, "PTAK": 0.6, "PSPD": -0.4, "PACC": -0.3}},
+
+  {"groups": ["OLB", "MLB"], "name": "coverage", "status": "prior", "description": "Coverage linebacker",
+   "offsets": {"PSPD": 0.6, "PAGI": 0.4, "PCTH": 0.5, "PSTR": -0.4}},
+  {"groups": ["OLB", "MLB"], "name": "run_defender", "status": "prior", "description": "Downhill run defender",
+   "offsets": {"PTAK": 0.7, "PSTR": 0.6, "PSPD": -0.3, "PCTH": -0.3}},
+  {"group": "OLB", "name": "pass_rusher", "status": "prior", "description": "Edge-rushing outside linebacker",
+   "offsets": {"PSPD": 0.5, "PACC": 0.7, "PSTR": 0.3, "PCTH": -0.4}},
+
+  {"group": "CB", "name": "cover", "status": "prior", "description": "Cover corner",
+   "offsets": {"PSPD": 0.5, "PAGI": 0.5, "PJMP": 0.4, "PCTH": 0.3, "PTAK": -0.4, "PSTR": -0.3}},
+  {"group": "CB", "name": "physical", "status": "prior", "description": "Physical/run-support corner",
+   "offsets": {"PTAK": 0.6, "PSTR": 0.5, "PAGI": -0.3}},
+
+  {"groups": ["FS", "SS"], "name": "coverage", "status": "prior", "description": "Center-field / coverage safety",
+   "offsets": {"PSPD": 0.5, "PCTH": 0.5, "PJMP": 0.3, "PTAK": -0.3, "PSTR": -0.3}},
+  {"groups": ["FS", "SS"], "name": "box", "status": "prior", "description": "Box safety / hitter",
+   "offsets": {"PTAK": 0.7, "PSTR": 0.5, "PSPD": -0.3, "PCTH": -0.3}},
+
+  {"groups": ["K", "P"], "name": "power_leg", "status": "prior", "description": "Big leg, less accurate",
+   "offsets": {"PKPR": 0.8, "PKAC": -0.4}},
+  {"groups": ["K", "P"], "name": "accurate", "status": "prior", "description": "Accurate, shorter leg",
+   "offsets": {"PKAC": 0.8, "PKPR": -0.4}}
+ ]
+}

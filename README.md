@@ -22,6 +22,11 @@ real file formats. Goals in priority order:
 
 Nothing is marked working without evidence from the real disc or from PCSX2.
 
+**Historical rating conversion (Madden '95 → Madden 06):** see
+[historical-ratings/README.md](historical-ratings/README.md). Milestone 1 mapping is
+documented and the conversion engine is tested on synthetic data only; it companions
+the Madden06Editor (v0.1.0-alpha) source and writes no game files.
+
 ## Quick start (Windows)
 
 1. **Code → Download ZIP** on this repository page, then extract it.

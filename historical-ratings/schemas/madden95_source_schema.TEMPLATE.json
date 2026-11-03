@@ -1,0 +1,31 @@
+{
+ "schema_version": 1,
+ "game": "Madden NFL '95",
+ "platform": "UNVERIFIED - set to Genesis or SNES once the source file is identified",
+ "roster_basis": "UNVERIFIED - shipped 1994 preseason roster or updated? Check docs/MILESTONE-1-MAPPING.md roster-season markers",
+ "notes": [
+  "TEMPLATE. No Madden '95 field meaning below is verified.",
+  "Rename columns r1..r4 to match the source file's columns, and set min/max to the stored range.",
+  "Add one interpretation per (column, set of source positions). Classic Madden reused rating slots per position.",
+  "Set verified=true only with evidence (screen labels, manual page, ROM documentation). Unverified entries are ignored unless --allow-unverified-fields is passed.",
+  "position_map slot names come from the Madden '93/'94 Genesis editor (depth-chart slots); confirm them against the '95 source. KR/PR are returner roles, not positions."
+ ],
+ "identity_columns": {"source_id": "id", "team": "team", "position": "position", "name": "name", "jersey": "jersey"},
+ "columns": [
+  {"name": "r1", "min": 0, "max": 15},
+  {"name": "r2", "min": 0, "max": 15},
+  {"name": "r3", "min": 0, "max": 15},
+  {"name": "r4", "min": 0, "max": 15}
+ ],
+ "interpretations": [
+  {"column": "r1", "positions": ["QB"], "meaning": "UNKNOWN", "targets": [], "verified": false, "evidence": ""}
+ ],
+ "position_map": {
+  "QB": "QB", "HB": "HB", "FB": "FB", "WR": "WR", "TE": "TE",
+  "LT": "T", "RT": "T", "LG": "G", "RG": "G", "C": "C",
+  "LDE": "DE", "RDE": "DE", "LDT": "DT", "RDT": "DT", "NT": "DT",
+  "LOLB": "OLB", "ROLB": "OLB", "LILB": "MLB", "RILB": "MLB", "MLB": "MLB",
+  "LCB": "CB", "RCB": "CB", "SS": "SS", "FS": "FS", "K": "K", "P": "P",
+  "KR": null, "PR": null
+ }
+}
